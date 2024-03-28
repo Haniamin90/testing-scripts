@@ -22,6 +22,19 @@ def compute_metrics(eval_pred):
         "accuracy": (predictions == labels).astype(np.float32).mean().item()
     }
 
+# find optimal batch size for 4090 GPU
+def optimal_batch_size(num_rows):
+    """This function computes the optimal batch size."""
+    if num_rows < 1000:
+        return 1
+    elif num_rows < 10000:
+        return 2
+    elif num_rows < 100000:
+        return 4
+    elif num_rows < 1000000:
+        return 8
+    else:
+        return 16
 
 def execute(task_args):
     """This function executes the task."""
@@ -50,7 +63,11 @@ def execute(task_args):
         tokenized_datasets["train"].shuffle(seed=task_args["seed"]).select(range(task_args["num_rows"]))
     )
     training_args = TrainingArguments(
-        output_dir="my_model", evaluation_strategy="epoch", save_strategy='epoch', fp16=True
+        output_dir="my_model",
+        evaluation_strategy="epoch",
+        save_strategy='epoch',
+        fp16=True,
+        per_device_train_batch_size=optimal_batch_size(task_args["num_rows"]),
     )
 
     trainer = Trainer(
